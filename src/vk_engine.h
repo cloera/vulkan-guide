@@ -1,7 +1,8 @@
 ﻿// vulkan_guide.h : Include file for standard system include files,
 // or project specific include files.
 
-#pragma once
+#ifndef VK_ENGINE_H
+#define VK_ENGINE_H
 
 #include <vk_types.h>
 
@@ -29,3 +30,5 @@ public:
 	//run main loop
 	void run();
 };
+
+#endif // VK_ENGINE_H

@@ -1,6 +1,8 @@
 ﻿// vulkan_guide.h : Include file for standard system include files,
 // or project specific include files.
-#pragma once
+
+#ifndef VK_TYPES_H
+#define VK_TYPES_H
 
 #include <memory>
 #include <optional>
@@ -29,3 +31,5 @@
             abort();                                                    \
         }                                                               \
     } while (0)
+
+#endif // VK_TYPES_H

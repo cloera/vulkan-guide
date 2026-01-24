@@ -1,7 +1,8 @@
 ﻿// vulkan_guide.h : Include file for standard system include files,
 // or project specific include files.
 
-#pragma once
+#ifndef VK_INITIALIZERS_H
+#define VK_INITIALIZERS_H
 
 #include <vk_types.h>
 
@@ -50,3 +51,5 @@ VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(VkShaderStageF
     VkShaderModule shaderModule,
     const char * entry = "main");
 } // namespace vkinit
+
+#endif // !VK_INITIALIZERS_H
