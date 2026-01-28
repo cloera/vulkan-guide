@@ -45,13 +45,16 @@ void VulkanEngine::init()
 void VulkanEngine::cleanup()
 {
     if (isInitialized) {
-
+        destroySwapchain();
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+        vkDestroyDevice(device, nullptr);
+#if DEBUG
+        vkb::destroy_debug_utils_messenger(instance, debugMessenger);
+#endif // DEBUG
+        vkDestroyInstance(instance, nullptr);
         SDL_DestroyWindow(pWindow);
-        instance = nullptr;
-        debugMessenger = nullptr;
+        
         chosenGPU = nullptr;
-        device = nullptr;
-        surface = nullptr;
     }
 
     // clear engine pointer
@@ -109,7 +112,9 @@ void VulkanEngine::initVulkan()
     // Create Vulkan instance with default debug features
     vkb::Result<vkb::Instance> builderResult = vkInstBuilder.set_app_name("Sample Vulkan App")
         .request_validation_layers(requestValidationLayers)
+#if DEBUG
         .use_default_debug_messenger()
+#endif
         .require_api_version(1, 3, 0)
         .build();
 
@@ -118,7 +123,9 @@ void VulkanEngine::initVulkan()
 
     // Store Vulkan instance
     instance = vkbInstance.instance;
+#if DEBUG
     debugMessenger = vkbInstance.debug_messenger;
+#endif // DEBUG
 
     // Create Vulkan specific surface
     // Surface stores pixels in main memory. Pixels can be accessed and modify with CPU
@@ -157,6 +164,7 @@ void VulkanEngine::initVulkan()
 
 void VulkanEngine::initSwapchain()
 {
+    createSwapchain(windowExtent.width, windowExtent.height);
 }
 
 void VulkanEngine::initCommands()
@@ -165,4 +173,38 @@ void VulkanEngine::initCommands()
 
 void VulkanEngine::initSyncStructures()
 {
+}
+
+void VulkanEngine::createSwapchain(uint32_t width, uint32_t height)
+{
+    vkb::SwapchainBuilder swapchainBuilder(chosenGPU, device, surface);
+
+    swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+
+    vkb::Swapchain vkbSwapchain = swapchainBuilder
+        //.use_default_format_selection()
+        .set_desired_format(VkSurfaceFormatKHR{ .format = swapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+        //use vsync present mode
+        .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+        .set_desired_extent(width, height)
+        .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+        .build()
+        .value();
+
+    swapchainExtent = vkbSwapchain.extent;
+    // store swapchain and its related images
+    swapchain = vkbSwapchain.swapchain;
+    swapchainImages = vkbSwapchain.get_images().value();
+    swapchainImageViews = vkbSwapchain.get_image_views().value();
+}
+
+void VulkanEngine::destroySwapchain()
+{
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
+
+    // destroy swapchain resources
+    for (int i = 0; i < swapchainImageViews.size(); i++)
+    {
+        vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+    }
 }

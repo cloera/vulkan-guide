@@ -10,18 +10,29 @@ class VulkanEngine {
 public:
 
 	VkInstance instance = nullptr;
-	VkDebugUtilsMessengerEXT debugMessenger = nullptr;
-	VkPhysicalDevice chosenGPU = nullptr;
 	VkDevice device = nullptr;
 	VkSurfaceKHR surface = nullptr;
-	VkExtent2D windowExtent { 1700 , 900 };
+	VkSwapchainKHR swapchain = nullptr;
+	std::vector<VkImage> swapchainImages;
+	std::vector<VkImageView> swapchainImageViews;
+#if DEBUG
+	VkDebugUtilsMessengerEXT debugMessenger = nullptr;
+#endif
+	VkPhysicalDevice chosenGPU = nullptr;
+	struct SDL_Window* pWindow{ nullptr };
+
+	VkExtent2D windowExtent{ 1700 , 900 };
+	VkExtent2D swapchainExtent{ 0, 0 };
+	VkFormat swapchainImageFormat = VK_FORMAT_UNDEFINED;
+	
 	int frameNumber = 0 ;
 	bool isInitialized = false ;
 	bool stopRendering = false ;
 	bool requestValidationLayers = true ;
-	bool padding4;
-
-	struct SDL_Window* pWindow{ nullptr };
+	bool padding1 = false;
+	int padding2 = 0;
+	
+	
 
 	static VulkanEngine& Get();
 
@@ -40,6 +51,9 @@ private:
 	void initSwapchain();
 	void initCommands();
 	void initSyncStructures();
+
+	void createSwapchain(uint32_t width, uint32_t height);
+	void destroySwapchain();
 };
 
 #endif // VK_ENGINE_H
