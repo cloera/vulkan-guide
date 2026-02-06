@@ -5,6 +5,7 @@
 #define VK_ENGINE_H
 
 #include <vk_types.h>
+#include <FrameData.h>
 
 class VulkanEngine {
 public:
@@ -13,13 +14,19 @@ public:
 	VkDevice device = nullptr;
 	VkSurfaceKHR surface = nullptr;
 	VkSwapchainKHR swapchain = nullptr;
+
+	FrameData frames[FRAME_OVERLAP];
 	std::vector<VkImage> swapchainImages;
 	std::vector<VkImageView> swapchainImageViews;
+
 #if DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger = nullptr;
 #endif
 	VkPhysicalDevice chosenGPU = nullptr;
 	struct SDL_Window* pWindow{ nullptr };
+
+	VkQueue graphicsQueue = nullptr;
+	uint32_t graphicsQueueFamily = 0;
 
 	VkExtent2D windowExtent{ 1700 , 900 };
 	VkExtent2D swapchainExtent{ 0, 0 };
@@ -30,11 +37,11 @@ public:
 	bool stopRendering = false ;
 	bool requestValidationLayers = true ;
 	bool padding1 = false;
-	int padding2 = 0;
 	
 	
 
 	static VulkanEngine& Get();
+	FrameData& getCurrentFrame() { return frames[frameNumber % FRAME_OVERLAP]; };
 
 	//initializes everything in the engine
 	void init();
