@@ -6,6 +6,9 @@
 struct FrameData
 {
 public:
+	VkSemaphore swapchainSemaphore;
+	VkSemaphore renderSemaphore;
+	VkFence renderFence;
 	VkCommandPool commandPool;
 	VkCommandBuffer mainCommandBuffer;
 };
