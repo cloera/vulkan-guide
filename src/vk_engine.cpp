@@ -2,8 +2,8 @@
 #include "vk_engine.h"
 #include <vk_images.h>
 
-#include <SDL.h>
-#include <SDL_vulkan.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
 
 #include <VkBootstrap.h>
 #include <vk_initializers.h>
