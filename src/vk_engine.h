@@ -10,38 +10,38 @@
 class VulkanEngine {
 public:
 
-	VkInstance instance = nullptr;
-	VkDevice device = nullptr;
-	VkSurfaceKHR surface = nullptr;
-	VkSwapchainKHR swapchain = nullptr;
+	VkInstance vkInstance = nullptr;
+	VkDevice vkDevice = nullptr;
+	VkSurfaceKHR vkSurface = nullptr;
+	VkSwapchainKHR vkSwapchain = nullptr;
 
 	FrameData frames[FRAME_OVERLAP];
-	std::vector<VkImage> swapchainImages;
-	std::vector<VkImageView> swapchainImageViews;
+	std::vector<VkImage> vkSwapchainImages;
+	std::vector<VkImageView> vkSwapchainImageViews;
 
 #if DEBUG
-	VkDebugUtilsMessengerEXT debugMessenger = nullptr;
+	VkDebugUtilsMessengerEXT vkDebugMessenger = nullptr;
 #endif
-	VkPhysicalDevice chosenGPU = nullptr;
+	VkPhysicalDevice vkChosenGPU = nullptr;
 	struct SDL_Window* pWindow{ nullptr };
 
-	VkQueue graphicsQueue = nullptr;
+	VkQueue vkGraphicsQueue = nullptr;
 	uint32_t graphicsQueueFamily = 0;
 
-	VkExtent2D windowExtent{ 1700 , 900 };
-	VkExtent2D swapchainExtent{ 0, 0 };
-	VkFormat swapchainImageFormat = VK_FORMAT_UNDEFINED;
+	const VkExtent2D vkWindowExtent{ 1700 , 900 };
+	VkExtent2D vkSwapchainExtent{ 0, 0 };
+	VkFormat vkSwapchainImageFormat = VK_FORMAT_UNDEFINED;
 	
 	int frameNumber = 0 ;
 	bool isInitialized = false ;
 	bool stopRendering = false ;
-	bool requestValidationLayers = true ;
-	bool padding1 = false;
+	const bool requestValidationLayers = true ;
+	const bool padding1 = false;
 	
 	
 
-	static VulkanEngine& Get();
-	FrameData& getCurrentFrame() { return frames[frameNumber % FRAME_OVERLAP]; };
+	const static VulkanEngine& Get();
+	const FrameData& getCurrentFrame() const { return frames[frameNumber % FRAME_OVERLAP]; };
 
 	//initializes everything in the engine
 	void init();

@@ -13,7 +13,8 @@
 
 VulkanEngine* pLoadedEngine = nullptr;
 
-VulkanEngine& VulkanEngine::Get() { return *pLoadedEngine; }
+const VulkanEngine& VulkanEngine::Get() { return *pLoadedEngine; }
+
 void VulkanEngine::init()
 {
     // only one engine initialization is allowed with the application.
@@ -29,8 +30,8 @@ void VulkanEngine::init()
         "Vulkan Engine",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        windowExtent.width,
-        windowExtent.height,
+        vkWindowExtent.width,
+        vkWindowExtent.height,
         window_flags);
 
     // Initialize Vulkan
@@ -47,28 +48,28 @@ void VulkanEngine::cleanup()
 {
     if (isInitialized) {
         // Wait for GPU to finish tasks
-        vkDeviceWaitIdle(device);
+        vkDeviceWaitIdle(vkDevice);
 
         for (int i = 0; i < FRAME_OVERLAP; i++)
         {
-            vkDestroyCommandPool(device, frames[i].commandPool, nullptr);
+            vkDestroyCommandPool(vkDevice, frames[i].vkCommandPool, nullptr);
 
             //destroy sync objects
-            vkDestroyFence(device, frames[i].renderFence, nullptr);
-            vkDestroySemaphore(device, frames[i].renderSemaphore, nullptr);
-            vkDestroySemaphore(device, frames[i].swapchainSemaphore, nullptr);
+            vkDestroyFence(vkDevice, frames[i].vkRenderFence, nullptr);
+            vkDestroySemaphore(vkDevice, frames[i].vkRenderSemaphore, nullptr);
+            vkDestroySemaphore(vkDevice, frames[i].vkSwapchainSemaphore, nullptr);
         }
 
         destroySwapchain();
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        vkDestroyDevice(device, nullptr);
+        vkDestroySurfaceKHR(vkInstance, vkSurface, nullptr);
+        vkDestroyDevice(vkDevice, nullptr);
 #if DEBUG
-        vkb::destroy_debug_utils_messenger(instance, debugMessenger);
+        vkb::destroy_debug_utils_messenger(vkInstance, vkDebugMessenger);
 #endif // DEBUG
-        vkDestroyInstance(instance, nullptr);
+        vkDestroyInstance(vkInstance, nullptr);
         SDL_DestroyWindow(pWindow);
         
-        chosenGPU = nullptr;
+        vkChosenGPU = nullptr;
     }
 
     // clear engine pointer
@@ -78,15 +79,15 @@ void VulkanEngine::cleanup()
 void VulkanEngine::draw()
 {
     // wait until the gpu has finished rendering the last frame. Timeout for 1 second
-    VK_CHECK(vkWaitForFences(device, 1, &getCurrentFrame().renderFence, true, 1000000000));
-    VK_CHECK(vkResetFences(device, 1, &getCurrentFrame().renderFence));
+    VK_CHECK(vkWaitForFences(vkDevice, 1, &getCurrentFrame().vkRenderFence, true, 1000000000));
+    VK_CHECK(vkResetFences(vkDevice, 1, &getCurrentFrame().vkRenderFence));
 
     //request image from the swapchain
     uint32_t swapchainImageIndex;
-    VK_CHECK(vkAcquireNextImageKHR(device, swapchain, 1000000000, getCurrentFrame().swapchainSemaphore, nullptr, &swapchainImageIndex));
+    VK_CHECK(vkAcquireNextImageKHR(vkDevice, vkSwapchain, 1000000000, getCurrentFrame().vkSwapchainSemaphore, nullptr, &swapchainImageIndex));
 
     //naming it cmd for shorter writing
-    VkCommandBuffer cmdBuff = getCurrentFrame().mainCommandBuffer;
+    VkCommandBuffer cmdBuff = getCurrentFrame().vkMainCommandBuffer;
 
     // now that we are sure that the commands finished executing, we can safely
     // reset the command buffer to begin recording again.
@@ -99,7 +100,7 @@ void VulkanEngine::draw()
     VK_CHECK(vkBeginCommandBuffer(cmdBuff, &cmdBeginInfo));
 
     //make the swapchain image into writeable mode before rendering
-    vkutil::transitionImage(cmdBuff, swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::transitionImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     //make a clear-color from frame number. This will flash with a 120 frame period.
     VkClearColorValue clearValue;
@@ -109,10 +110,10 @@ void VulkanEngine::draw()
     VkImageSubresourceRange clearRange = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
 
     //clear image
-    vkCmdClearColorImage(cmdBuff, swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+    vkCmdClearColorImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 
     //make the swapchain image into presentable mode
-    vkutil::transitionImage(cmdBuff, swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    vkutil::transitionImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     //finalize the command buffer (we can no longer add commands, but it can now be executed)
     VK_CHECK(vkEndCommandBuffer(cmdBuff));
@@ -123,14 +124,14 @@ void VulkanEngine::draw()
 
     VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmdBuff);
 
-    VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, getCurrentFrame().swapchainSemaphore);
-    VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, getCurrentFrame().renderSemaphore);
+    VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, getCurrentFrame().vkSwapchainSemaphore);
+    VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, getCurrentFrame().vkRenderSemaphore);
 
     VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, &signalInfo, &waitInfo);
 
     //submit command buffer to the queue and execute it.
     // _renderFence will now block until the graphic commands finish execution
-    VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, getCurrentFrame().renderFence));
+    VK_CHECK(vkQueueSubmit2(vkGraphicsQueue, 1, &submit, getCurrentFrame().vkRenderFence));
 
     //prepare present
     // this will put the image we just rendered to into the visible window.
@@ -139,15 +140,15 @@ void VulkanEngine::draw()
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
-    presentInfo.pSwapchains = &swapchain;
+    presentInfo.pSwapchains = &vkSwapchain;
     presentInfo.swapchainCount = 1;
 
-    presentInfo.pWaitSemaphores = &getCurrentFrame().renderSemaphore;
+    presentInfo.pWaitSemaphores = &getCurrentFrame().vkRenderSemaphore;
     presentInfo.waitSemaphoreCount = 1;
 
     presentInfo.pImageIndices = &swapchainImageIndex;
 
-    VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
+    VK_CHECK(vkQueuePresentKHR(vkGraphicsQueue, &presentInfo));
 
     //increase the number of frames drawn
     frameNumber++;
@@ -209,14 +210,14 @@ void VulkanEngine::initVulkan()
     vkb::Instance vkbInstance = builderResult.value();
 
     // Store Vulkan instance
-    instance = vkbInstance.instance;
+    vkInstance = vkbInstance.instance;
 #if DEBUG
-    debugMessenger = vkbInstance.debug_messenger;
+    vkDebugMessenger = vkbInstance.debug_messenger;
 #endif // DEBUG
 
     // Create Vulkan specific surface
     // Surface stores pixels in main memory. Pixels can be accessed and modify with CPU
-    SDL_Vulkan_CreateSurface(pWindow, instance, &surface);
+    SDL_Vulkan_CreateSurface(pWindow, vkInstance, &vkSurface);
 
     // Vulkan 1.3 features
     VkPhysicalDeviceVulkan13Features features { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
@@ -235,7 +236,7 @@ void VulkanEngine::initVulkan()
         .set_minimum_version(1, 3)
         .set_required_features_13(features)
         .set_required_features_12(features12)
-        .set_surface(surface)
+        .set_surface(vkSurface)
         .select()
         .value();
 
@@ -245,17 +246,17 @@ void VulkanEngine::initVulkan()
     vkb::Device vkbDevice = deviceBuilder.build().value();
 
     // Get the VkDevice handle used in the rest of a vulkan application
-    device = vkbDevice.device;
-    chosenGPU = physicalDevice.physical_device;
+    vkDevice = vkbDevice.device;
+    vkChosenGPU = physicalDevice.physical_device;
 
     // use vkbootstrap to get a Graphics queue
-    graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+    vkGraphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
     graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 }
 
 void VulkanEngine::initSwapchain()
 {
-    createSwapchain(windowExtent.width, windowExtent.height);
+    createSwapchain(vkWindowExtent.width, vkWindowExtent.height);
 }
 
 void VulkanEngine::initCommands()
@@ -266,12 +267,12 @@ void VulkanEngine::initCommands()
 
     for (int i = 0; i < FRAME_OVERLAP; i++)
     {
-        VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &frames[i].commandPool));
+        VK_CHECK(vkCreateCommandPool(vkDevice, &commandPoolInfo, nullptr, &frames[i].vkCommandPool));
 
         // Allocate default command buffer
-        VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frames[i].commandPool, 1);
+        VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frames[i].vkCommandPool, 1);
 
-        VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &frames[i].mainCommandBuffer));
+        VK_CHECK(vkAllocateCommandBuffers(vkDevice, &cmdAllocInfo, &frames[i].vkMainCommandBuffer));
     }
 }
 
@@ -285,22 +286,22 @@ void VulkanEngine::initSyncStructures()
     VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
     for (int i = 0; i < FRAME_OVERLAP; i++) {
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i].renderFence));
+        VK_CHECK(vkCreateFence(vkDevice, &fenceCreateInfo, nullptr, &frames[i].vkRenderFence));
 
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].swapchainSemaphore));
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].renderSemaphore));
+        VK_CHECK(vkCreateSemaphore(vkDevice, &semaphoreCreateInfo, nullptr, &frames[i].vkSwapchainSemaphore));
+        VK_CHECK(vkCreateSemaphore(vkDevice, &semaphoreCreateInfo, nullptr, &frames[i].vkRenderSemaphore));
     }
 }
 
 void VulkanEngine::createSwapchain(uint32_t width, uint32_t height)
 {
-    vkb::SwapchainBuilder swapchainBuilder(chosenGPU, device, surface);
+    vkb::SwapchainBuilder swapchainBuilder(vkChosenGPU, vkDevice, vkSurface);
 
-    swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    vkSwapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
     vkb::Swapchain vkbSwapchain = swapchainBuilder
         //.use_default_format_selection()
-        .set_desired_format(VkSurfaceFormatKHR{ .format = swapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+        .set_desired_format(VkSurfaceFormatKHR{ .format = vkSwapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
         //use vsync present mode
         .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
         .set_desired_extent(width, height)
@@ -308,20 +309,20 @@ void VulkanEngine::createSwapchain(uint32_t width, uint32_t height)
         .build()
         .value();
 
-    swapchainExtent = vkbSwapchain.extent;
+    vkSwapchainExtent = vkbSwapchain.extent;
     // store swapchain and its related images
-    swapchain = vkbSwapchain.swapchain;
-    swapchainImages = vkbSwapchain.get_images().value();
-    swapchainImageViews = vkbSwapchain.get_image_views().value();
+    vkSwapchain = vkbSwapchain.swapchain;
+    vkSwapchainImages = vkbSwapchain.get_images().value();
+    vkSwapchainImageViews = vkbSwapchain.get_image_views().value();
 }
 
 void VulkanEngine::destroySwapchain()
 {
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
+    vkDestroySwapchainKHR(vkDevice, vkSwapchain, nullptr);
 
     // destroy swapchain resources
-    for (int i = 0; i < swapchainImageViews.size(); i++)
+    for (int i = 0; i < vkSwapchainImageViews.size(); i++)
     {
-        vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+        vkDestroyImageView(vkDevice, vkSwapchainImageViews[i], nullptr);
     }
 }

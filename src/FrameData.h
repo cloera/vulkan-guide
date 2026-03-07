@@ -6,11 +6,11 @@
 struct FrameData
 {
 public:
-	VkSemaphore swapchainSemaphore;
-	VkSemaphore renderSemaphore;
-	VkFence renderFence;
-	VkCommandPool commandPool;
-	VkCommandBuffer mainCommandBuffer;
+	VkSemaphore vkSwapchainSemaphore;
+	VkSemaphore vkRenderSemaphore;
+	VkFence vkRenderFence;
+	VkCommandPool vkCommandPool;
+	VkCommandBuffer vkMainCommandBuffer;
 };
 
 constexpr unsigned int FRAME_OVERLAP = 2;
