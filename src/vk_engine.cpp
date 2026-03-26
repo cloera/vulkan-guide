@@ -50,10 +50,12 @@ void VulkanEngine::cleanup()
         // Wait for GPU to finish tasks
         vkDeviceWaitIdle(vkDevice);
 
+        // Destroy frame data
         for (int i = 0; i < FRAME_OVERLAP; i++)
         {
+            vkFreeCommandBuffers(vkDevice, frames[i].vkCommandPool, 1, &frames[i].vkMainCommandBuffer);
             vkDestroyCommandPool(vkDevice, frames[i].vkCommandPool, nullptr);
-
+			
             //destroy sync objects
             vkDestroyFence(vkDevice, frames[i].vkRenderFence, nullptr);
             vkDestroySemaphore(vkDevice, frames[i].vkRenderSemaphore, nullptr);
@@ -70,10 +72,12 @@ void VulkanEngine::cleanup()
         SDL_DestroyWindow(pWindow);
         
         vkChosenGPU = nullptr;
-    }
 
-    // clear engine pointer
-    pLoadedEngine = nullptr;
+        // clear engine pointer
+        pLoadedEngine = nullptr;
+
+		isInitialized = false;
+    }
 }
 
 void VulkanEngine::draw()
@@ -84,7 +88,7 @@ void VulkanEngine::draw()
 
     //request image from the swapchain
     uint32_t swapchainImageIndex;
-    VK_CHECK(vkAcquireNextImageKHR(vkDevice, vkSwapchain, 1000000000, getCurrentFrame().vkSwapchainSemaphore, nullptr, &swapchainImageIndex));
+    VK_CHECK(vkAcquireNextImageKHR(vkDevice, swapChain.getSwapchain(), 1000000000, getCurrentFrame().vkSwapchainSemaphore, nullptr, &swapchainImageIndex));
 
     //naming it cmd for shorter writing
     VkCommandBuffer cmdBuff = getCurrentFrame().vkMainCommandBuffer;
@@ -100,7 +104,8 @@ void VulkanEngine::draw()
     VK_CHECK(vkBeginCommandBuffer(cmdBuff, &cmdBeginInfo));
 
     //make the swapchain image into writeable mode before rendering
-    vkutil::transitionImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	std::vector<VkImage> swapChainImages = swapChain.getSwapchainImages();
+    vkutil::transitionImage(cmdBuff, swapChainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     //make a clear-color from frame number. This will flash with a 120 frame period.
     VkClearColorValue clearValue;
@@ -110,10 +115,10 @@ void VulkanEngine::draw()
     VkImageSubresourceRange clearRange = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
 
     //clear image
-    vkCmdClearColorImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+    vkCmdClearColorImage(cmdBuff, swapChainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 
     //make the swapchain image into presentable mode
-    vkutil::transitionImage(cmdBuff, vkSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    vkutil::transitionImage(cmdBuff, swapChainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     //finalize the command buffer (we can no longer add commands, but it can now be executed)
     VK_CHECK(vkEndCommandBuffer(cmdBuff));
@@ -140,7 +145,7 @@ void VulkanEngine::draw()
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
-    presentInfo.pSwapchains = &vkSwapchain;
+    presentInfo.pSwapchains = &swapChain.getSwapchain();
     presentInfo.swapchainCount = 1;
 
     presentInfo.pWaitSemaphores = &getCurrentFrame().vkRenderSemaphore;
@@ -256,7 +261,8 @@ void VulkanEngine::initVulkan()
 
 void VulkanEngine::initSwapchain()
 {
-    createSwapchain(vkWindowExtent.width, vkWindowExtent.height);
+	swapChain = SwapChain(vkDevice);
+	swapChain.create(vkChosenGPU, vkSurface, vkWindowExtent.width, vkWindowExtent.height);
 }
 
 void VulkanEngine::initCommands()
@@ -293,36 +299,7 @@ void VulkanEngine::initSyncStructures()
     }
 }
 
-void VulkanEngine::createSwapchain(uint32_t width, uint32_t height)
-{
-    vkb::SwapchainBuilder swapchainBuilder(vkChosenGPU, vkDevice, vkSurface);
-
-    vkSwapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-
-    vkb::Swapchain vkbSwapchain = swapchainBuilder
-        //.use_default_format_selection()
-        .set_desired_format(VkSurfaceFormatKHR{ .format = vkSwapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
-        //use vsync present mode
-        .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-        .set_desired_extent(width, height)
-        .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-        .build()
-        .value();
-
-    vkSwapchainExtent = vkbSwapchain.extent;
-    // store swapchain and its related images
-    vkSwapchain = vkbSwapchain.swapchain;
-    vkSwapchainImages = vkbSwapchain.get_images().value();
-    vkSwapchainImageViews = vkbSwapchain.get_image_views().value();
-}
-
 void VulkanEngine::destroySwapchain()
 {
-    vkDestroySwapchainKHR(vkDevice, vkSwapchain, nullptr);
-
-    // destroy swapchain resources
-    for (int i = 0; i < vkSwapchainImageViews.size(); i++)
-    {
-        vkDestroyImageView(vkDevice, vkSwapchainImageViews[i], nullptr);
-    }
+	swapChain.destroy();
 }

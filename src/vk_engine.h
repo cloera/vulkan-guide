@@ -6,6 +6,7 @@
 
 #include <vk_types.h>
 #include <FrameData.h>
+#include <SwapChain.h>
 
 class VulkanEngine {
 public:
@@ -13,32 +14,25 @@ public:
 	VkInstance vkInstance = nullptr;
 	VkDevice vkDevice = nullptr;
 	VkSurfaceKHR vkSurface = nullptr;
-	VkSwapchainKHR vkSwapchain = nullptr;
-
+	SwapChain swapChain;
 	FrameData frames[FRAME_OVERLAP];
-	std::vector<VkImage> vkSwapchainImages;
-	std::vector<VkImageView> vkSwapchainImageViews;
+
 
 #if DEBUG
 	VkDebugUtilsMessengerEXT vkDebugMessenger = nullptr;
 #endif
-	VkPhysicalDevice vkChosenGPU = nullptr;
 	struct SDL_Window* pWindow{ nullptr };
+	const VkExtent2D vkWindowExtent{ 1700 , 900 };
 
+	VkPhysicalDevice vkChosenGPU = nullptr;
 	VkQueue vkGraphicsQueue = nullptr;
 	uint32_t graphicsQueueFamily = 0;
-
-	const VkExtent2D vkWindowExtent{ 1700 , 900 };
-	VkExtent2D vkSwapchainExtent{ 0, 0 };
-	VkFormat vkSwapchainImageFormat = VK_FORMAT_UNDEFINED;
 	
 	int frameNumber = 0 ;
 	bool isInitialized = false ;
 	bool stopRendering = false ;
 	const bool requestValidationLayers = true ;
 	const bool padding1 = false;
-	
-	
 
 	const static VulkanEngine& Get();
 	const FrameData& getCurrentFrame() const { return frames[frameNumber % FRAME_OVERLAP]; };
@@ -59,7 +53,7 @@ private:
 	void initCommands();
 	void initSyncStructures();
 
-	void createSwapchain(uint32_t width, uint32_t height);
+	//void createSwapchain(uint32_t width, uint32_t height);
 	void destroySwapchain();
 };
 

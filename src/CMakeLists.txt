@@ -18,6 +18,8 @@ add_executable (engine
   camera.cpp
   camera.h
   FrameData.h
+  SwapChain.cpp
+  SwapChain.h
   ClassDiagram.cd
 )
 

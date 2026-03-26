@@ -1,11 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="VulkanEngine">
-    <Position X="8" Y="4.25" Width="4" />
+    <Position X="8" Y="4.25" Width="2" />
     <TypeIdentifier>
-      <HashCode>QCAAAoAKECABAQBAAgZEAAIICIDAAAIMBAAIEyAAAAA=</HashCode>
+      <HashCode>wCAAAoAAECABAQBBQAIAAAIICAAAAgIMBAAAASAAQQA=</HashCode>
       <FileName>C:\Development\vulkan-guide\src\vk_engine.h</FileName>
     </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="frames" />
+      <Field Name="pWindow" />
+      <Field Name="vkWindowExtent" />
+    </ShowAsAssociation>
   </Class>
+  <Struct Name="VkExtent2D" Collapsed="true">
+    <Position X="12" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAQAQAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>C:\VulkanSDK\1.3.296.0\Include\vulkan\vulkan_core.h</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="FrameData">
+    <Position X="12" Y="6" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQIAAACAAAAAAAAAAAAAAIAAAAAAAAABAAAA=</HashCode>
+      <FileName>C:\Development\vulkan-guide\src\FrameData.h</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Typedef Name="SDL_Window" Collapsed="true">
+    <Position X="12" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Development\vulkan-guide\build\third_party\SDL\include\SDL2\SDL_video.h</FileName>
+    </TypeIdentifier>
+  </Typedef>
+  <Enum Name="VkFormat" Collapsed="true">
+    <Position X="12" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>732jL9Sp/+5//35dv5rqr3z2Eu/YWULsbX/2C3j+ah8=</HashCode>
+      <FileName>C:\VulkanSDK\1.3.296.0\Include\vulkan\vulkan_core.h</FileName>
+    </TypeIdentifier>
+  </Enum>
   <Font Name="Segoe UI" Size="9" />
 </ClassDiagram>
